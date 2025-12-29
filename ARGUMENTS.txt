@@ -1,0 +1,54 @@
+==================================================
+PDDL4J ASP / IntelliJ Program Arguments
+(Run Configuration → Program Arguments)
+==================================================
+
+--------------------------------------------------
+DEPOT (classical STRIPS)
+--------------------------------------------------
+resources/benchmarks/pddl/depots/strips-automatic/domain.pddl resources/benchmarks/pddl/depots/strips-automatic/p001.pddl
+
+
+--------------------------------------------------
+BLOCKS (STRIPS typed)
+--------------------------------------------------
+resources/benchmarks/pddl/blocks/strips-typed/domain.pddl resources/benchmarks/pddl/blocks/strips-typed/p001.pddl
+
+
+--------------------------------------------------
+BLOCKS (STRIPS untyped)
+--------------------------------------------------
+resources/benchmarks/pddl/blocks/strips-untyped/domain.pddl resources/benchmarks/pddl/blocks/strips-untyped/p01.pddl
+
+
+--------------------------------------------------
+GRIPPER (STRIPS)
+--------------------------------------------------
+resources/benchmarks/pddl/gripper/strips/domain.pddl resources/benchmarks/pddl/gripper/strips/p001.pddl
+
+
+--------------------------------------------------
+GRIPPER (ADL)
+--------------------------------------------------
+resources/benchmarks/pddl/gripper/adl/domain.pddl resources/benchmarks/pddl/gripper/adl/p001.pddl
+
+
+--------------------------------------------------
+LOGISTICS (STRIPS round)
+--------------------------------------------------
+resources/benchmarks/pddl/logistics/strips-round1/domain.pddl resources/benchmarks/pddl/logistics/strips-round1/p001.pddl
+
+
+--------------------------------------------------
+LOGISTICS (STRIPS round 2)
+--------------------------------------------------
+resources/benchmarks/pddl/logistics/strips-round2/domain.pddl resources/benchmarks/pddl/logistics/strips-round2/p001.pddl
+
+
+--------------------------------------------------
+LOGISTICS (ADL)
+--------------------------------------------------
+resources/benchmarks/pddl/logistics/adl/domain.pddl resources/benchmarks/pddl/logistics/adl/p001.pddl
+
+
+======================================================================================
