@@ -3,10 +3,14 @@ import fr.uga.pddl4j.parser.DefaultParsedProblem;
 import fr.uga.pddl4j.plan.Plan;
 import fr.uga.pddl4j.planners.AbstractPlanner;
 import fr.uga.pddl4j.problem.DefaultProblem;
+import fr.uga.pddl4j.problem.State;
 import fr.uga.pddl4j.problem.Problem;
+import fr.uga.pddl4j.problem.operator.Action;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
+
+import java.util.List;
 
 /**
  * RWPlanner: Simple planner based on random walks.
@@ -47,6 +51,16 @@ public class RWPlanner extends AbstractPlanner {
      */
     @Override
     public Plan solve(final Problem problem) {
+        // Vérifier qu'on voit bien l'état initial,but et actions
+        final State s0 = new State(problem.getInitialState());
+
+        final List<Action> actions = problem.getActions();
+
+        LOGGER.info("========== RWPlanner (Step 1) ==========\n");
+        LOGGER.info("Timeout (ms): {}\n", this.getTimeout());
+        LOGGER.info("Number of ground actions: {}\n", actions.size());
+        LOGGER.info("Initial state (s0): {}\n", s0);
+
         LOGGER.info("RWPlanner: solve() not implemented -> returning null");
         return null;
     }
