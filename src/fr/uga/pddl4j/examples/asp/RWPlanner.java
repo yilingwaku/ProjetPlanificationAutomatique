@@ -48,6 +48,37 @@ public class RWPlanner extends AbstractPlanner {
     private StateHeuristic.Name heuristicName = StateHeuristic.Name.FAST_FORWARD;
 
     private StateHeuristic heuristic;
+    @CommandLine.Option(names = {"--walkLength", "-L"}, defaultValue = "20",
+            paramLabel = "<int>",
+            description = "Longueur maximale d'une random walk (LENGTH_WALK).")
+    public void setWalkLength(final int L) {
+        if (L <= 0) throw new IllegalArgumentException("walkLength must be > 0");
+        this.walkLength = L;
+    }
+
+    @CommandLine.Option(names = {"--numWalks", "-N"}, defaultValue = "200",
+            paramLabel = "<int>",
+            description = "Nombre de random walks par étape (NUM_WALK).")
+    public void setNumWalks(final int n) {
+        if (n <= 0) throw new IllegalArgumentException("numWalks must be > 0");
+        this.numWalks = n;
+    }
+
+    @CommandLine.Option(names = {"--maxNoImprove", "-C"}, defaultValue = "50",
+            paramLabel = "<int>",
+            description = "Nombre max d'itérations sans amélioration avant restart (counter).")
+    public void setMaxStepsNoImprove(final int c) {
+        if (c < 0) throw new IllegalArgumentException("maxNoImprove must be >= 0");
+        this.maxStepsNoImprove = c;
+    }
+
+    @CommandLine.Option(names = {"--heuristic", "-H"}, defaultValue = "FAST_FORWARD",
+            paramLabel = "<name>",
+            description = "Heuristique: FAST_FORWARD, SUM, MAX, SET_LEVEL, ... (selon PDDL4J).")
+    public void setHeuristicName(final StateHeuristic.Name h) {
+        this.heuristicName = h;
+    }
+
 
     /**
      * Résultat d'une seule random walk (rollout).
@@ -204,7 +235,10 @@ public class RWPlanner extends AbstractPlanner {
         int counter = 0;
 
         LOGGER.info("\n========== RWPlanner ==========\n");
-        LOGGER.info("Timeout(ms)={} \n actions={} \n walkLength={} \n numWalks={} \n maxStepsNoImprove={}\n",
+        LOGGER.info("walkLength={} numWalks={} maxStepsNoImprove={} heuristic={}\n",
+                this.walkLength, this.numWalks, this.maxStepsNoImprove, this.heuristicName);
+
+        LOGGER.info("\nTimeout(ms)={} \n actions={} \n walkLength={} \n numWalks={} \n maxStepsNoImprove={}\n",
                 timeoutMs, actions.size(), this.walkLength, this.numWalks, this.maxStepsNoImprove);
 
         while (!isGoal(pb, s)) {
