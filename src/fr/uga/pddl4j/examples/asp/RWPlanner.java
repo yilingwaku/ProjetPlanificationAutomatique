@@ -231,7 +231,7 @@ public class RWPlanner extends AbstractPlanner {
         SequentialPlan plan = new SequentialPlan();
         int t = 0;
 
-        int hmin = h(problem,s);
+        int hmin = h(pb, s);
         int counter = 0;
 
         LOGGER.info("\n========== RWPlanner ==========\n");
@@ -246,6 +246,10 @@ public class RWPlanner extends AbstractPlanner {
             // timeout check
             if (timeoutMs > 0 && System.currentTimeMillis() - startTime > timeoutMs) {
                 LOGGER.info("Timeout reached -> returning null");
+
+                System.out.println("RESULT: FAILURE");
+                System.out.println("RESULT: PLAN_LENGTH=0");
+                System.out.println("RESULT: RUNTIME_MS=" + (System.currentTimeMillis() - startTime));
                 return null;
             }
 
@@ -254,8 +258,8 @@ public class RWPlanner extends AbstractPlanner {
                 LOGGER.info("Restart (counter>{})", this.maxStepsNoImprove);
                 s = new State(pb.getInitialState());
                 plan = new SequentialPlan();
-                t=0;
-                hmin = h(problem,s);
+                t = 0;
+                hmin = h(pb, s);
                 counter = 0;
             }
 
@@ -268,29 +272,36 @@ public class RWPlanner extends AbstractPlanner {
                 s = new State(pb.getInitialState());
                 plan = new SequentialPlan();
                 t = 0;
-                hmin = h(problem,s);
+                hmin = h(pb, s);
                 counter = 0;
                 continue;
             }
 
             // Ajouter actions dans le plan
             for (Action a : wr.actions) {
-                plan.add(t,a);
+                plan.add(t, a);
                 t++;
             }
 
-            // Deplacer a l'etet suivant
+            // Déplacer à l'état suivant
             s = wr.endState;
 
             // Si on arrive dans le goal
             if (wr.reachedGoal || isGoal(pb, s)) {
-                LOGGER.info("Goal reached! plan length={}", plan.size());
-                this.getStatistics().setTimeToSearch(System.currentTimeMillis() - startTime);
+                long runtime = System.currentTimeMillis() - startTime;
+
+                LOGGER.info("Goal reached! plan length={}\n", t);
+                this.getStatistics().setTimeToSearch(runtime);
+
+                System.out.println("RESULT: SUCCESS");
+                System.out.println("RESULT: PLAN_LENGTH=" + t);
+                System.out.println("RESULT: RUNTIME_MS=" + runtime);
+
                 return plan;
             }
 
-            // Mise a jour
-            int hs = h(pb,s);
+            // Mise à jour counter
+            int hs = h(pb, s);
             if (hs < hmin) {
                 hmin = hs;
                 counter = 0;
@@ -299,10 +310,20 @@ public class RWPlanner extends AbstractPlanner {
             }
         }
 
-        LOGGER.info("Goal already satisfied at start -> empty plan");
-        this.getStatistics().setTimeToSearch(System.currentTimeMillis() - startTime);
+        // Goal satisfied at start
+        long runtime = System.currentTimeMillis() - startTime;
+        LOGGER.info("Goal already satisfied at start");
+
+        this.getStatistics().setTimeToSearch(runtime);
+
+
+        System.out.println("RESULT: SUCCESS");
+        System.out.println("RESULT: PLAN_LENGTH=" + t);
+        System.out.println("RESULT: RUNTIME_MS=" + runtime);
+
         return plan;
     }
+
 
 
 
