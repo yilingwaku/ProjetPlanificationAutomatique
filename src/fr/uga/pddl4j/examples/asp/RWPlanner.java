@@ -324,12 +324,6 @@ public class RWPlanner extends AbstractPlanner {
         return plan;
     }
 
-
-
-
-
-
-
     public static void main(String[] args) {
         try {
             final RWPlanner planner = new RWPlanner();

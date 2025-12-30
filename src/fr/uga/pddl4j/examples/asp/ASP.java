@@ -129,6 +129,7 @@ public class ASP extends AbstractPlanner {
 
     @Override
     public Plan solve(final Problem problem) {
+        final long startTime = System.currentTimeMillis();
         // Creates the A* search strategy
         StateSpaceSearch search = StateSpaceSearch.getInstance(SearchStrategy.Name.ASTAR,
                 this.getHeuristic(), this.getHeuristicWeight(), this.getTimeout());
@@ -140,13 +141,26 @@ public class ASP extends AbstractPlanner {
 //        Planner.getLogger().trace(problem.toString(goal));
 //        Plan plan = search.extractPlan(goal, problem);
 
+        long runtimeMs = (long) search.getSearchingTime();
+        if (runtimeMs <= 0) {
+            runtimeMs = System.currentTimeMillis() - startTime;
+        }
+
         // If a plan is found update the statistics of the planner and log search information
         if (plan != null) {
             LOGGER.info("* A* search succeeded\n");
             this.getStatistics().setTimeToSearch(search.getSearchingTime());
             this.getStatistics().setMemoryUsedToSearch(search.getMemoryUsed());
+
+            System.out.println("RESULT: SUCCESS");
+            System.out.println("RESULT: PLAN_LENGTH=" + plan.size());
+            System.out.println("RESULT: RUNTIME_MS=" + runtimeMs);
+
         } else {
             LOGGER.info("* A* search failed\n");
+            System.out.println("RESULT: FAILURE");
+            System.out.println("RESULT: PLAN_LENGTH=0");
+            System.out.println("RESULT: RUNTIME_MS=" + runtimeMs);
         }
         // Return the plan found or null if the search fails.
         return plan;
