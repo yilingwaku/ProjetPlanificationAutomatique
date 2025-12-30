@@ -6,9 +6,11 @@ import fr.uga.pddl4j.problem.DefaultProblem;
 import fr.uga.pddl4j.problem.State;
 import fr.uga.pddl4j.problem.Problem;
 import fr.uga.pddl4j.problem.operator.Action;
+import fr.uga.pddl4j.problem.Goal;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
+
 
 import java.util.List;
 import java.util.ArrayList;
@@ -44,13 +46,16 @@ public class RWPlanner extends AbstractPlanner {
         final State endState;
         final List<Action> actions;
         final boolean deadEnd;
+        final boolean reachedGoal;
 
-        WalkResult(State endState, List<Action> actions, boolean deadEnd) {
+        WalkResult(State endState, List<Action> actions, boolean deadEnd, boolean reachedGoal) {
             this.endState = endState;
             this.actions = actions;
             this.deadEnd = deadEnd;
+            this.reachedGoal = reachedGoal;
         }
     }
+
 
     /**
      * Retourne la liste des actions dans un état donné.
@@ -59,19 +64,20 @@ public class RWPlanner extends AbstractPlanner {
     private List<Action> getApplicableActions(final State state, final List<Action> allActions) {
         final List<Action> applicable = new ArrayList<>();
         for (Action a : allActions) {
-            if (a.isApplicable(state)) {
+            if (state.satisfy(a.getPrecondition())) {
                 applicable.add(a);
             }
         }
         return applicable;
     }
 
+
     /**
      * Une seule rollout de longueur maxLen
      * À chaque pas: A = actions applicables(s), choisir une action au hasard, appliquer.
      * Si A est vide alors dead-end et on s'arrête.
      */
-    private WalkResult randomWalkRollout(final State start, final List<Action> allActions, final int maxLen) {
+    private WalkResult randomWalkRollout(final Problem problem,final State start, final List<Action> allActions, final int maxLen) {
 
         State current = new State(start);
         final List<Action> seq = new ArrayList<>();
@@ -81,7 +87,7 @@ public class RWPlanner extends AbstractPlanner {
 
             // dead-end: aucune action applicable
             if (applicable.isEmpty()) {
-                return new WalkResult(current, seq, true);
+                return new WalkResult(current, seq, true,false);
             }
 
             // choix d'une action applicable
@@ -97,9 +103,12 @@ public class RWPlanner extends AbstractPlanner {
 
             current = next;
 
-        }
+            if(isGoal(problem,current)){
+                return new WalkResult(current,seq,false,true);
+            }
 
-        return new WalkResult(current, seq, false);
+        }
+        return new WalkResult(current, seq, false, false);
     }
 
 
@@ -118,6 +127,35 @@ public class RWPlanner extends AbstractPlanner {
         return pb;
     }
 
+    private WalkResult pureRandomWalk(final Problem problem,
+                                      final State start,
+                                      final List<Action> allActions,
+                                      final int maxLen,
+                                      final int numWalks) {
+
+        WalkResult best = null;
+
+        for (int i = 0; i < numWalks; i++) {
+            WalkResult wr = randomWalkRollout(problem, start, allActions, maxLen);
+
+            if (wr.reachedGoal) {
+                return wr; // succès immédiat
+            }
+
+            // fallback simple temporaire: prendre la walk la plus courte (on mettra l'heuristique ensuite)
+            if (!wr.deadEnd) {
+                if (best == null || wr.actions.size() < best.actions.size()) {
+                    best = wr;
+                }
+            }
+        }
+
+        if (best == null) {
+            return new WalkResult(new State(start), new ArrayList<>(), true, false);
+        }
+        return best;
+    }
+
     /**
      * Solve method: Solution
      */
@@ -125,6 +163,8 @@ public class RWPlanner extends AbstractPlanner {
     public Plan solve(final Problem problem) {
         // Vérifier qu'on voit bien l'état initial,but et actions
         final State s0 = new State(problem.getInitialState());
+        final int maxLen = 20;
+        final int numWalks = 50;
 
         final List<Action> actions = problem.getActions();
 
@@ -133,14 +173,21 @@ public class RWPlanner extends AbstractPlanner {
         LOGGER.info("Number of ground actions: {}\n", actions.size());
         LOGGER.info("Initial state (s0): {}\n", s0);
 
-        final int maxLen = 20;
-        WalkResult wr = randomWalkRollout(s0, actions, maxLen);
+        // WalkResult wr = randomWalkRollout(s0, actions, maxLen);
+        WalkResult wr = pureRandomWalk(problem,s0,actions,maxLen,numWalks);
 
         LOGGER.info("One rollout done: len={} deadEnd={} endState={}\n",
                 wr.actions.size(), wr.deadEnd, wr.endState);
 
         return null;
     }
+
+    private boolean isGoal(final Problem problem, final State s) {
+        final DefaultProblem pb = (DefaultProblem) problem;
+        return s.satisfy(pb.getGoal());
+    }
+
+
 
     public static void main(String[] args) {
         try {
