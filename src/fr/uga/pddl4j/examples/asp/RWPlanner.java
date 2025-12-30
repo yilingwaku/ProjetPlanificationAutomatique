@@ -7,6 +7,10 @@ import fr.uga.pddl4j.problem.State;
 import fr.uga.pddl4j.problem.Problem;
 import fr.uga.pddl4j.problem.operator.Action;
 import fr.uga.pddl4j.problem.Goal;
+import fr.uga.pddl4j.plan.SequentialPlan;
+import fr.uga.pddl4j.heuristics.state.StateHeuristic;
+
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
@@ -36,8 +40,14 @@ public class RWPlanner extends AbstractPlanner {
 
     private static final Logger LOGGER = LogManager.getLogger(RWPlanner.class.getName());
 
-    // RNG pour les random walks (seed fixe = reproductible)
+    // RNG pour les random walks
     private final Random rng = new Random(0);
+    private int walkLength = 20;        // LENGTH_WALK
+    private int numWalks = 200;         // NUM_WALK
+    private int maxStepsNoImprove = 50; // MAX_STEPS (counter)
+    private StateHeuristic.Name heuristicName = StateHeuristic.Name.FAST_FORWARD;
+
+    private StateHeuristic heuristic;
 
     /**
      * Résultat d'une seule random walk (rollout).
@@ -59,7 +69,7 @@ public class RWPlanner extends AbstractPlanner {
 
     /**
      * Retourne la liste des actions dans un état donné.
-     * Random walk: on prendra ensuite une action au hasard.
+     * Random walk: on prend ensuite une action au hasard.
      */
     private List<Action> getApplicableActions(final State state, final List<Action> allActions) {
         final List<Action> applicable = new ArrayList<>();
@@ -71,6 +81,31 @@ public class RWPlanner extends AbstractPlanner {
         return applicable;
     }
 
+    @Override
+    public boolean isSupported(Problem problem) {
+        return true;
+    }
+
+    private boolean isGoal(final Problem problem, final State s) {
+        final DefaultProblem pb = (DefaultProblem) problem;
+        return s.satisfy(pb.getGoal());
+    }
+
+
+    /**
+     * Instancier le problème de planification
+     */
+    @Override
+    public Problem instantiate(DefaultParsedProblem problem) {
+        final Problem pb = new DefaultProblem(problem);
+        pb.instantiate();
+        return pb;
+    }
+
+    private int h(final Problem problem, final State s) {
+        final DefaultProblem pb = (DefaultProblem) problem;
+        return this.heuristic.estimate(s, pb.getGoal());
+    }
 
     /**
      * Une seule rollout de longueur maxLen
@@ -112,39 +147,29 @@ public class RWPlanner extends AbstractPlanner {
     }
 
 
-    @Override
-    public boolean isSupported(Problem problem) {
-        return true;
-    }
+
 
     /**
-     * Instancier le problème de planification
+     * Pure Random Walks
      */
-    @Override
-    public Problem instantiate(DefaultParsedProblem problem) {
-        final Problem pb = new DefaultProblem(problem);
-        pb.instantiate();
-        return pb;
-    }
-
     private WalkResult pureRandomWalk(final Problem problem,
                                       final State start,
-                                      final List<Action> allActions,
-                                      final int maxLen,
-                                      final int numWalks) {
+                                      final List<Action> allActions) {
 
         WalkResult best = null;
+        int bestH = Integer.MAX_VALUE;
 
-        for (int i = 0; i < numWalks; i++) {
-            WalkResult wr = randomWalkRollout(problem, start, allActions, maxLen);
+        for (int i = 0; i < this.numWalks; i++) {
+            WalkResult wr = randomWalkRollout(problem, start, allActions, this.walkLength);
 
             if (wr.reachedGoal) {
-                return wr; // succès immédiat
+                return wr;
             }
 
-            // fallback simple temporaire: prendre la walk la plus courte (on mettra l'heuristique ensuite)
             if (!wr.deadEnd) {
-                if (best == null || wr.actions.size() < best.actions.size()) {
+                int hv = h(problem,wr.endState); // endpoint evaluation uniquement
+                if (hv < bestH) {
+                    bestH = hv;
                     best = wr;
                 }
             }
@@ -161,31 +186,92 @@ public class RWPlanner extends AbstractPlanner {
      */
     @Override
     public Plan solve(final Problem problem) {
-        // Vérifier qu'on voit bien l'état initial,but et actions
-        final State s0 = new State(problem.getInitialState());
-        final int maxLen = 20;
-        final int numWalks = 50;
-
-        final List<Action> actions = problem.getActions();
-
-        LOGGER.info("========== RWPlanner ==========\n");
-        LOGGER.info("Timeout (ms): {}\n", this.getTimeout());
-        LOGGER.info("Number of ground actions: {}\n", actions.size());
-        LOGGER.info("Initial state (s0): {}\n", s0);
-
-        // WalkResult wr = randomWalkRollout(s0, actions, maxLen);
-        WalkResult wr = pureRandomWalk(problem,s0,actions,maxLen,numWalks);
-
-        LOGGER.info("One rollout done: len={} deadEnd={} endState={}\n",
-                wr.actions.size(), wr.deadEnd, wr.endState);
-
-        return null;
-    }
-
-    private boolean isGoal(final Problem problem, final State s) {
         final DefaultProblem pb = (DefaultProblem) problem;
-        return s.satisfy(pb.getGoal());
+        final List<Action> actions = pb.getActions();
+
+        // Init heuristic
+        this.heuristic = StateHeuristic.getInstance(this.heuristicName, pb);
+
+        final long startTime = System.currentTimeMillis();
+        final long timeoutMs = this.getTimeout();
+
+        // Algorithm 1 variables
+        State s = new State(pb.getInitialState());
+        SequentialPlan plan = new SequentialPlan();
+        int t = 0;
+
+        int hmin = h(problem,s);
+        int counter = 0;
+
+        LOGGER.info("\n========== RWPlanner ==========\n");
+        LOGGER.info("Timeout(ms)={} \n actions={} \n walkLength={} \n numWalks={} \n maxStepsNoImprove={}\n",
+                timeoutMs, actions.size(), this.walkLength, this.numWalks, this.maxStepsNoImprove);
+
+        while (!isGoal(pb, s)) {
+
+            // timeout check
+            if (timeoutMs > 0 && System.currentTimeMillis() - startTime > timeoutMs) {
+                LOGGER.info("Timeout reached -> returning null");
+                return null;
+            }
+
+            // restart condition
+            if (counter > this.maxStepsNoImprove) {
+                LOGGER.info("Restart (counter>{})", this.maxStepsNoImprove);
+                s = new State(pb.getInitialState());
+                plan = new SequentialPlan();
+                t=0;
+                hmin = h(problem,s);
+                counter = 0;
+            }
+
+            // Algorithm 2
+            WalkResult wr = pureRandomWalk(pb, s, actions);
+
+            // dead-end / empty -> restart
+            if (wr.deadEnd || wr.actions.isEmpty()) {
+                LOGGER.info("Dead-end or empty walk -> restart");
+                s = new State(pb.getInitialState());
+                plan = new SequentialPlan();
+                t = 0;
+                hmin = h(problem,s);
+                counter = 0;
+                continue;
+            }
+
+            // Ajouter actions dans le plan
+            for (Action a : wr.actions) {
+                plan.add(t,a);
+                t++;
+            }
+
+            // Deplacer a l'etet suivant
+            s = wr.endState;
+
+            // Si on arrive dans le goal
+            if (wr.reachedGoal || isGoal(pb, s)) {
+                LOGGER.info("Goal reached! plan length={}", plan.size());
+                this.getStatistics().setTimeToSearch(System.currentTimeMillis() - startTime);
+                return plan;
+            }
+
+            // Mise a jour
+            int hs = h(pb,s);
+            if (hs < hmin) {
+                hmin = hs;
+                counter = 0;
+            } else {
+                counter++;
+            }
+        }
+
+        LOGGER.info("Goal already satisfied at start -> empty plan");
+        this.getStatistics().setTimeToSearch(System.currentTimeMillis() - startTime);
+        return plan;
     }
+
+
+
 
 
 
