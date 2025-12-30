@@ -47,7 +47,7 @@ public class RWPlanner extends AbstractPlanner {
      */
     @Override
     public Plan solve(final Problem problem) {
-        LOGGER.info("* RWPlanner skeleton: solve() not implemented yet -> returning null");
+        LOGGER.info("RWPlanner: solve() not implemented -> returning null");
         return null;
     }
 
