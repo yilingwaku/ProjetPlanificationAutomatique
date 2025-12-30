@@ -11,6 +11,9 @@ import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Random;
+
 
 /**
  * RWPlanner: Simple planner based on random walks.
@@ -30,6 +33,75 @@ import java.util.List;
 public class RWPlanner extends AbstractPlanner {
 
     private static final Logger LOGGER = LogManager.getLogger(RWPlanner.class.getName());
+
+    // RNG pour les random walks (seed fixe = reproductible)
+    private final Random rng = new Random(0);
+
+    /**
+     * Résultat d'une seule random walk (rollout).
+     */
+    private static class WalkResult {
+        final State endState;
+        final List<Action> actions;
+        final boolean deadEnd;
+
+        WalkResult(State endState, List<Action> actions, boolean deadEnd) {
+            this.endState = endState;
+            this.actions = actions;
+            this.deadEnd = deadEnd;
+        }
+    }
+
+    /**
+     * Retourne la liste des actions dans un état donné.
+     * Random walk: on prendra ensuite une action au hasard.
+     */
+    private List<Action> getApplicableActions(final State state, final List<Action> allActions) {
+        final List<Action> applicable = new ArrayList<>();
+        for (Action a : allActions) {
+            if (a.isApplicable(state)) {
+                applicable.add(a);
+            }
+        }
+        return applicable;
+    }
+
+    /**
+     * Une seule rollout de longueur maxLen
+     * À chaque pas: A = actions applicables(s), choisir une action au hasard, appliquer.
+     * Si A est vide alors dead-end et on s'arrête.
+     */
+    private WalkResult randomWalkRollout(final State start, final List<Action> allActions, final int maxLen) {
+
+        State current = new State(start);
+        final List<Action> seq = new ArrayList<>();
+
+        for (int j = 0; j < maxLen; j++) {
+            final List<Action> applicable = getApplicableActions(current, allActions);
+
+            // dead-end: aucune action applicable
+            if (applicable.isEmpty()) {
+                return new WalkResult(current, seq, true);
+            }
+
+            // choix d'une action applicable
+            final int idx = rng.nextInt(applicable.size());
+            final Action chosen = applicable.get(idx);
+            seq.add(chosen);
+
+            final State next = new State(current);
+            // appliquer l'effet inconditionnel
+            next.apply(chosen.getUnconditionalEffect());
+            // appliquer les effets conditionnels (ADL)
+            next.apply(chosen.getConditionalEffects());
+
+            current = next;
+
+        }
+
+        return new WalkResult(current, seq, false);
+    }
+
 
     @Override
     public boolean isSupported(Problem problem) {
@@ -56,12 +128,17 @@ public class RWPlanner extends AbstractPlanner {
 
         final List<Action> actions = problem.getActions();
 
-        LOGGER.info("========== RWPlanner (Step 1) ==========\n");
+        LOGGER.info("========== RWPlanner ==========\n");
         LOGGER.info("Timeout (ms): {}\n", this.getTimeout());
         LOGGER.info("Number of ground actions: {}\n", actions.size());
         LOGGER.info("Initial state (s0): {}\n", s0);
 
-        LOGGER.info("RWPlanner: solve() not implemented -> returning null");
+        final int maxLen = 20;
+        WalkResult wr = randomWalkRollout(s0, actions, maxLen);
+
+        LOGGER.info("One rollout done: len={} deadEnd={} endState={}\n",
+                wr.actions.size(), wr.deadEnd, wr.endState);
+
         return null;
     }
 
