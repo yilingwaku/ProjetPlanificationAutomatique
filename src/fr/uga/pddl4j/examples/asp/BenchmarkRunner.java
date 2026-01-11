@@ -17,19 +17,21 @@ import java.util.stream.Collectors;
  */
 public class BenchmarkRunner {
 
-    private static final Path PDDL_ROOT = Paths.get("ASP/resources/benchmarks/pddl");
+    private static final Path PDDL_ROOT = Paths.get("resources/benchmarks/pddl");
     private static final List<String> DOMAINS = List.of("blocks", "depot", "gripper", "logistics");
 
     // si un planner bloque, on coupe.
-    private static final long PROCESS_TIMEOUT_MS = 60_000;
+    private static final long PROCESS_TIMEOUT_MS = 120_000; // 2 min max
 
-    // RWPlanner params
-    private static final List<String> RW_PARAMS = List.of(
-            "-L", "20",
-            "-N", "200",
-            "-C", "50",
-            "-H", "FAST_FORWARD"
+    // MCTSPlanner params
+    // MCTSPlanner params
+    private static final List<String> MCTS_PARAMS = List.of(
+            "-I", "300",
+            "-R", "40",
+            "-P", "500",
+            "-C", "1.4"
     );
+
 
     // Optionnel: forcer timeout interne
     private static final List<String> COMMON_PLANNER_PARAMS = List.of(
@@ -94,11 +96,11 @@ public class BenchmarkRunner {
             rows.add(toRow(inst, "ASP", asp));
             printShort("ASP", asp);
 
-            // RWPlanner
-            RunResult rw = runPlanner("RW", "fr.uga.pddl4j.examples.asp.RWPlanner",
-                    inst.domainFile, inst.problemFile, RW_PARAMS);
-            rows.add(toRow(inst, "RW", rw));
-            printShort("RW ", rw);
+            // MCTSPlanner
+            RunResult mcts = runPlanner("MCTS", "fr.uga.pddl4j.examples.asp.MCTSPlanner",
+                    inst.domainFile, inst.problemFile, MCTS_PARAMS);
+            rows.add(toRow(inst, "MCTS", mcts));
+            printShort("MCTS", mcts);
 
             System.out.println();
         }
@@ -226,17 +228,19 @@ public class BenchmarkRunner {
         cmd.add(classpath);
         cmd.add(mainClass);
 
-        // common params (optional)
+        /// common params (optional)
         cmd.addAll(COMMON_PLANNER_PARAMS);
 
-        // domain + problem
+        // extra params (MCTS etc.) -> mettre AVANT domain/problem
+        cmd.addAll(extraParams);
+
+        // domain + problem (positional parameters)
         cmd.add(domainPddl.toString());
         cmd.add(problemPddl.toString());
 
-        // extra params (RW)
-        cmd.addAll(extraParams);
 
         long t0 = System.currentTimeMillis();
+//        System.out.println("CMD=" + String.join(" ", cmd));
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(true);
