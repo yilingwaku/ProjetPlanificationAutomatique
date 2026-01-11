@@ -44,10 +44,10 @@ public class MCTSPlanner extends AbstractPlanner {
     private final Random rng = new Random(0);
 
     // MCTS params
-    private int iterations = 300;       // nombre d'itérations MCTS
-    private int rolloutDepth = 40;      // profondeur max des rollouts
-    private int maxPlanLength = 500;    // sécurité pour éviter boucle infinie
-    private double explorationC = 1.4;  // constante UCB
+    private int iterations = 1000;       // nombre d'itérations MCTS
+    private int rolloutDepth = 80;      // profondeur max des rollouts
+    private int maxPlanLength = 1500;    // sécurité pour éviter boucle infinie
+    private double explorationC = 1.6;  // constante UCB
 
     @CommandLine.Option(names = {"--iterations", "-I"}, defaultValue = "300",
             paramLabel = "<int>",
