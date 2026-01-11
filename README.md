@@ -36,7 +36,11 @@ Un robot muni de deux pinces doit déplacer des objets entre différentes pièce
 
 - Logistics (planification de trajets, allocation de ressources et coordination de plusieurs types d’actions)
 
-Des colis doivent être déplacés entre villes à l’aide de camions et d’avions. 
+Des colis doivent être déplacés entre des villes à l’aide de camions et d’avions. 
+
+- Depots
+
+Domaine hybride combinant Blocks World et Logistics. Transporter et empiler des caisses dans des dépôts en utilisant des camions et des grues.
 
 
 # Comparaison des résultats
