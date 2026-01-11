@@ -46,7 +46,7 @@ Des colis doivent être déplacés entre villes à l’aide de camions et d’av
 
 1. **Blocks World (STRIPS typed + untyped)**
 
-- Pour ASP (A*)
+- Pour ASP 
 20 / 20 instances résolues (100 %)
 
 - Pour MCTS
@@ -54,7 +54,7 @@ Des colis doivent être déplacés entre villes à l’aide de camions et d’av
 
 2. **Gripper (STRIPS + ADL)**
 
-- Pour ASP (A*)
+- Pour ASP 
 7 instances résolues (Échecs à partir de p06 (timeouts))
 
 - Pour MCTS
@@ -63,7 +63,7 @@ Des colis doivent être déplacés entre villes à l’aide de camions et d’av
 
 3. **Logistics (toutes variantes)**
 
-- Pour ASP (A*)
+- Pour ASP 
 4 instances résolues (adl p01, adl p05, strips-round2 p01–p02).
 Mais il y a nombreux timeouts.
 
